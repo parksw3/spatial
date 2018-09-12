@@ -1,0 +1,163 @@
+\documentclass{article}
+
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+
+\usepackage{natbib}
+\usepackage{hyperref}
+\bibliographystyle{chicago}
+
+\title{Notes}
+\date{\today}
+\author{Sang Woo Park}
+
+\begin{document}
+\maketitle
+
+\section{Discrete time model}
+
+We are interested in estimating transmission rate (potentially time varying) across space.
+First, let's begin with a simple example.
+\begin{equation}
+\begin{aligned}
+S_{t+1} &= S_t - \beta_t S_t I_t\\
+I_{t+1} &= \beta_t S_t I_t
+\end{aligned}
+\end{equation}
+In this particular case, we have
+\begin{equation}
+i_{t+1} = \beta S_{t+1} I_{t+1} = \beta S_{t+1} i_t.
+\end{equation}
+This is essentially the framework for the TSIR model.
+The implicit assumption is that all infection occurs in one generation.
+
+\subsection{Multiple time step}
+
+We can extend this framework such that infection lasts for more than one generation (see \cite{fraser2007estimating}?).
+\begin{equation}
+\begin{aligned}
+S_{t+1} &= S_t - S_t \sum_{k=1}^t \beta_{t, k} i_k g_{t+1-k} \\
+\end{aligned}
+\end{equation}
+Incidence is given by
+\begin{equation}
+i_{t+1} = S_t \sum_{k=1}^t \beta_{t, k} i_k g_{t+1-k}.
+\end{equation}
+Measles has mean generation interval of 15 days and CV of 0.21.
+If we approximte that with a gamma distribution, we can approximate $g_t$.
+
+<<gen, echo=FALSE, fig.height=4, fig.width=6>>==
+gbar <- 15
+gcv <- 0.21
+
+g_t <- diff(pgamma(0:5*gbar, shape=1/gcv^2, scale=gbar*gcv^2))
+
+plot(g_t,
+	 ylab=expression(g[t]),
+	 xlab="generations")
+@
+
+So we can say that most of infection occur within the first two generations:
+\begin{equation}
+i_{t+1} = S_t (\beta_{t, 1} i_t g_1 + \beta_{t-1, 2} i_{t-1} g_2).
+\end{equation}
+
+<<>>===
+library(tsiR)
+g_t_adj <- c(g_t[1], 1-g_t[1])
+
+london <- twentymeas[["London"]]
+
+IP <- 2
+
+cumcases <- cumsum(london$cases)
+cumbirth <- cumsum(london$births)
+
+X <- cumcases
+Y <- cumbirth
+
+Yhat <- lowess(X,Y,f = 2/3, iter = 1)$y
+
+rho <- derivative(X,Yhat)
+
+Z <- residual.cases(Yhat,Y)
+adj.rho <- rho
+
+period <- rep(1:(52/IP), round(nrow(london)+1))[1:(nrow(london)-2)]
+
+Iadjusted <- round(london$cases * adj.rho)
+Inew <- tail(Iadjusted,-2) ## t+1
+Iminus1 <- head(Iadjusted,-2) ## t-1
+Iminus2 <- tail(head(Iadjusted,-1), -1) ## t
+Zminus <- tail(head(Z, -1), -1)
+
+Iminus1_adj <- Iminus1 * g_t[2]
+Iminus2_adj <- Iminus2 * g_t[1]
+
+pop <- london$pop
+minSmean <- max(0.01*pop,-(min(Z)+1))
+Smean <- exp(seq(log(minSmean), log(mean(pop)), length=500))
+nll <- rep(NA, 500)
+
+nrow <- length(Inew)
+ncol <- 26
+
+firstdiag <- 1:nrow%%ncol
+firstdiag[firstdiag==0] <- 26
+
+seconddiag <- 1:nrow%%ncol +1
+seconddiag[seconddiag==0] <- 26
+
+for (i in 1:500) {
+	Smean0 <- Smean[i]
+	
+	first <- Iminus1_adj * (Zminus + Smean0)
+
+	second <- Iminus2_adj * (Zminus + Smean0)
+
+	mm <- matrix(0, nrow=ncol, ncol=nrow)
+	
+	mm[0:(nrow-1)*26+firstdiag] <- first
+	mm[0:(nrow-1)*26+seconddiag] <- second
+	
+	mm_adj <- t(mm)
+	
+	fit0 <- lm.fit(mm_adj, Inew)
+	
+	nll[i] <- -stats:::logLik.lm(fit0)
+}
+
+j <- which.min(nll)
+
+Smean0 <- Smean[j]
+	
+first <- Iminus1_adj * (Zminus + Smean0)
+
+second <- Iminus2_adj * (Zminus + Smean0)
+
+mm <- matrix(0, nrow=ncol, ncol=nrow)
+	
+mm[0:(nrow-1)*26+firstdiag] <- first
+mm[0:(nrow-1)*26+seconddiag] <- second
+	
+mm_adj <- t(mm)
+	
+fit <- lm.fit(mm_adj, Inew)
+
+tsirfit <- runtsir(data=london, method="deterministic", nsim=1, IP=2, inits.fit=FALSE)
+
+plot(coef(fit), ylim=c(0, 2e-5))
+lines(tsirfit$beta)
+
+plot(Inew)
+lines(mm_adj %*% coef(fit))
+lines(tsirfit$res$cases, col=2)
+
+## tsirfit$sbar
+## Smean0
+@
+
+\bibliography{spatial}
+\end{document}
