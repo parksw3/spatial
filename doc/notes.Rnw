@@ -48,7 +48,7 @@ i_{t+1} = S_t \sum_{k=1}^t \beta_{t, k} i_k g_{t+1-k}.
 Measles has mean generation interval of 15 days and CV of 0.21.
 If we approximte that with a gamma distribution, we can approximate $g_t$.
 
-<<gen, echo=FALSE, fig.height=4, fig.width=6>>==
+<<gen, echo=FALSE, fig.height=4, fig.width=6, cache=TRUE>>==
 gbar <- 15
 gcv <- 0.21
 
@@ -58,105 +58,177 @@ plot(g_t,
 	 ylab=expression(g[t]),
 	 xlab="generations")
 @
+However, there is probably some censoring that we have to take into account and more infection must occur than 52\%.
+In fact, we have to calculate the probability that a person infected within the first two weeks will infected another person during the next two weeks.
+Given that the distribution of infection time follows some distribution $f(t)$, where $0 \leq t \leq 14$ and generation time $g(t)$, we want to compute the following:
+$$
+\int_0^14 f(t) \int_{14-t}^{28-t} g(s) ds dt
+$$
+Assume that $f(t)$ is a uniform distribution...
 
-So we can say that most of infection occur within the first two generations:
+<<cache=TRUE>>==
+library(pracma)
+integral2(function(x, y) dunif(x, min=0, max=14) * 
+		  	dgamma(y, shape=1/gcv^2, scale=gbar*gcv^2),
+		  xmin=0,
+		  xmax=14,
+		  ymin=function(x) 14-x,
+		  ymax=function(x) 28-x)
+
+@
+
+\noindent
+We obtain 81.6\%.
+
+Assume that most of infection occur within the first two generations:
 \begin{equation}
 i_{t+1} = S_t (\beta_{t, 1} i_t g_1 + \beta_{t-1, 2} i_{t-1} g_2).
 \end{equation}
+If we know $S_t$, we can solve for $\beta$ by minimizing sum of squares.
+In particular, we can write the above equation as matrix form:
+\begin{equation}
+\begin{bmatrix}
+i_3 \\ i_4 \\ \vdots \\ i_28 \\ i_29 \\ \vdots
+\end{bmatrix} =
+\begin{bmatrix}
+S_2 i_1 g_2 & S_2 i_2 g_1 & 0 & \cdots & 0\\
+0 & S_3 i_2 g_2 & S_3 i_3 g_1 & \cdots & 0\\
+\vdots & & \ddots & & \vdots\\
+S_27 i_27 g_1 & 0 & \cdots & 0 & S_27 i_26 g_2\\
+S_28 i_27 g_2 & S_28 i_28 g_1 & 0 \cdots & 0\\
+\vdots & & & & \vdots\\
+\end{bmatrix}
+\begin{bmatrix}
+\beta_1 \\ \beta_2 \\ \vdots \\ \beta_{25} \\ \beta_{26} \\
+\end{bmatrix}
+\end{equation}
+We can probably even use tensors to make this cleaner (or not)...
 
-<<>>===
+We can compare transmission rates inferred from this model vs. those inferred from the tsir model:
+<<load2, include=FALSE, message=FALSE, warning=FALSE, cache=TRUE>>===
 library(tsiR)
-g_t_adj <- c(g_t[1], 1-g_t[1])
+library(kernlab)
+library(MASS)
+library(mgcv)
+source("../R/lagtsir.R")
+@
 
+<<fit2, cache=TRUE>>==
 london <- twentymeas[["London"]]
 
-IP <- 2
+g_t_adj <- c(0.816, 1-0.816)
 
-cumcases <- cumsum(london$cases)
-cumbirth <- cumsum(london$births)
-
-X <- cumcases
-Y <- cumbirth
-
-Yhat <- lowess(X,Y,f = 2/3, iter = 1)$y
-
-rho <- derivative(X,Yhat)
-
-Z <- residual.cases(Yhat,Y)
-adj.rho <- rho
-
-period <- rep(1:(52/IP), round(nrow(london)+1))[1:(nrow(london)-2)]
-
-Iadjusted <- round(london$cases * adj.rho)
-Inew <- tail(Iadjusted,-2) ## t+1
-Iminus1 <- head(Iadjusted,-2) ## t-1
-Iminus2 <- tail(head(Iadjusted,-1), -1) ## t
-Zminus <- tail(head(Z, -1), -1)
-
-Iminus1_adj <- Iminus1 * g_t[2]
-Iminus2_adj <- Iminus2 * g_t[1]
-
-pop <- london$pop
-minSmean <- max(0.01*pop,-(min(Z)+1))
-Smean <- exp(seq(log(minSmean), log(mean(pop)), length=500))
-nll <- rep(NA, 500)
-
-nrow <- length(Inew)
-ncol <- 26
-
-firstdiag <- 1:nrow%%ncol
-firstdiag[firstdiag==0] <- 26
-
-seconddiag <- 1:nrow%%ncol +1
-seconddiag[seconddiag==0] <- 26
-
-for (i in 1:500) {
-	Smean0 <- Smean[i]
-	
-	first <- Iminus1_adj * (Zminus + Smean0)
-
-	second <- Iminus2_adj * (Zminus + Smean0)
-
-	mm <- matrix(0, nrow=ncol, ncol=nrow)
-	
-	mm[0:(nrow-1)*26+firstdiag] <- first
-	mm[0:(nrow-1)*26+seconddiag] <- second
-	
-	mm_adj <- t(mm)
-	
-	fit0 <- lm.fit(mm_adj, Inew)
-	
-	nll[i] <- -stats:::logLik.lm(fit0)
-}
-
-j <- which.min(nll)
-
-Smean0 <- Smean[j]
-	
-first <- Iminus1_adj * (Zminus + Smean0)
-
-second <- Iminus2_adj * (Zminus + Smean0)
-
-mm <- matrix(0, nrow=ncol, ncol=nrow)
-	
-mm[0:(nrow-1)*26+firstdiag] <- first
-mm[0:(nrow-1)*26+seconddiag] <- second
-	
-mm_adj <- t(mm)
-	
-fit <- lm.fit(mm_adj, Inew)
-
+ltsirfit <- runltsir(london, g_t_adj)
 tsirfit <- runtsir(data=london, method="deterministic", nsim=1, IP=2, inits.fit=FALSE)
+@
 
-plot(coef(fit), ylim=c(0, 2e-5))
-lines(tsirfit$beta)
+<<comptrans, echo = FALSE, fig.width=6, fig.height=4, cache=TRUE>>==
+plot(coef(ltsirfit), type="l", xlab="period", ylab="transmission rate")
+lines(tsirfit$beta, col=2, lty=2)
+legend(
+	"bottomleft",
+	legend=c("lagged", "tsir"),
+	col=c(1:2),
+	lty=c(1:2)
+)
 
-plot(Inew)
-lines(mm_adj %*% coef(fit))
-lines(tsirfit$res$cases, col=2)
+@
 
-## tsirfit$sbar
-## Smean0
+However, We run into residual issuses.
+
+<<resid, fig.width=6, fig.height=4, cache=TRUE>>==
+plot(ltsirfit$residuals)
+@
+
+For the case of measles, changes in transmission rates are mostly driven by changes in contact rates. 
+Hence, we can simplify the model such that
+\begin{equation}
+i_{t+1} = \beta_{t, 1} S_t ((1-\epsilon) i_t + \epsilon i_{t-1}).
+\end{equation}
+Then, we can even include the heterogeneity parameter and perform a log transformation to obtain a linear problem:
+\begin{equation}
+\log i_{t+1} = \log \beta_{t} + \log S_t + \alpha \log ((1-\epsilon) i_t + \epsilon i_{t-1}).
+\end{equation}
+We can assume Gaussian error but we can also use negative binomial with log linik:
+
+\begin{equation}
+ i_{t+1} = \mathrm{NegBin} \left( \exp\left( \log \beta_{t} + \log S_t + \alpha \log ((1-\epsilon) i_t + \epsilon i_{t-1})\right)\right)
+\end{equation}
+and perform a two dimensional optimization on $\epsilon$ and $\bar{S}$.
+Then, our residuals are much better:
+
+<<fit_NB, fig.width=6, fig.height=6, cache=TRUE>>==
+ltsirfit_NB <- runltsir_NB(london)
+par(mfrow=c(2, 2))
+plot(ltsirfit_NB$fit)
+par(mfrow=c(1,1))
+@
+
+Looking at the estimates of the transmission rates:
+
+<<echo=FALSE, cache=TRUE>>==
+plot(coef(ltsirfit), type="l", xlab="period", ylab="transmission rate", ylim=c(6e-6, 1.7e-5), lwd=2)
+lines(tsirfit$beta, col=2, lty=2, lwd=2)
+lines(exp(coef(ltsirfit_NB$fit)[1:26]), col=4, lty=3, lwd=2)
+legend(
+	"bottomleft",
+	legend=c("lagged", "tsir", "NBlag"),
+	col=c(1:2,4),
+	lty=c(1:3),
+	lwd=2
+)
+@
+
+However, it appears that there might be weak underlying structures in the residuals that we might have to deal with? Might be too weak to care about?
+
+<<resid2, fig.width=6, fig.height=4>>==
+par(mfrow=c(1, 2))
+plot(ltsirfit_NB$fit$residuals, type="l")
+pacf(ltsirfit_NB$fit$residuals)
+par(mfrow=c(1,1))
+@
+
+\subsection{Splines}
+
+We can try to smooth transmission rate over time using cyclic splines (\texttt{s(period, bs=``cc'')}) with GAM.
+<<cache=TRUE>>==
+ltsirfit_spline <- runltsir_NB(london, spline=TRUE)
+@
+
+Transmission rates?
+
+<<echo=FALSE, cache=TRUE, fig.width=6, fig.height=4>>==
+trans_spline <- exp(predict(
+	ltsirfit_spline$fit, 
+	newdata=data.frame(period=seq(1, 26, by=0.1), lIpred=0, lSpred=0)
+))
+
+plot(coef(ltsirfit), type="l", xlab="period", ylab="transmission rate", ylim=c(6e-6, 1.7e-5), lwd=2)
+lines(tsirfit$beta, col=2, lty=2, lwd=2)
+lines(exp(coef(ltsirfit_NB$fit)[1:26]), col=4, lty=3, lwd=2)
+lines(seq(1, 26, by=0.1), trans_spline, col=6, lwd=2, lty=4)
+legend(
+	"bottomleft",
+	legend=c("lagged", "tsir", "NBlag", "spline"),
+	col=c(1:2,4,6),
+	lty=c(1:4),
+	lwd=2
+)
+@
+
+
+
+
+\section*{Misc}
+
+See Vehtari - Slick time series... (Andrew Gelman); see the cover of third edition of Bayesian analysis.
+
+<<eval=FALSE>>==
+
+library(MASS)
+
+# glm.fit(family=negative.binomial(theta=10, link="identity"))
+
 @
 
 \bibliography{spatial}
