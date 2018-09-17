@@ -107,7 +107,11 @@ runltsir <- function(data,
 runltsir_NB <- function(data,
 						IP=2,
 						sigmamax=3,
-						spline=FALSE) {
+						spline=FALSE,
+						predict=FALSE,
+						nsim=10,
+						method="pois",
+						add.noise.sd = 0, mul.noise.sd = 0) {
 	cumcases <- cumsum(data$cases)
 	cumbirth <- cumsum(data$births)
 	
@@ -189,18 +193,82 @@ runltsir_NB <- function(data,
 	)
 	
 	if (spline) {
-		fit <- gam(Inew~ s(period, bs="cc", k=26) + offset(lSpred) + lIpred,
+		fit <- gam(Inew~ s(period, bs="cc") + offset(lSpred) + lIpred,
 				   family=nb,
 				   data=fitdata)
+		
+		beta <- exp(predict(
+			fit, 
+			newdata=data.frame(period=1:26, lIpred=0, lSpred=0)
+		))
+		alpha <- coef(fit)[2]
 	} else {
 		fit <- MASS::glm.nb(Inew~ -1 + as.factor(period) + offset(lSpred) + lIpred,
 							data=fitdata)
+		beta <- exp(coef(fit)[1:26])
+		alpha <- coef(fit)[27]
+	}
+	
+	if (predict) {
+		S <- rep(0,length(data$cases))
+		I <- rep(0,length(data$cases))
+		
+		S_start <- sbar + Z[1:2]
+		
+		head(lagImat_adj)
+		
+		res <- matrix(0,length(data$cases),nsim)
+		Sres <- matrix(0,length(data$cases),nsim)
+		
+		for(ct in 1:nsim){
+			
+			S <- rep(0,length(data$cases))
+			I <- rep(0,length(data$cases))
+			
+			S[1:2] <- S_start[1:2]
+			I[1:2] <- adj.rho[1:2]*data$cases[1:2]
+			
+			for (t in 3:(nrow(data))){
+				
+				lambda <- min(S[t-1], 
+							  unname(beta[period[t-2]] * S[t-1] * (I[t-1] * (1-epsilon) + I[t-2] * epsilon)^alpha))
+				
+				#if(lambda < 1 || is.nan(lambda) == T){lambda <- 0}
+				if(is.nan(lambda) == T){lambda <- 0}
+				
+				if(method == 'deterministic'){
+					I[t] <- lambda * rnorm( n = 1, mean = 1, sd=mul.noise.sd)
+					if(I[t] < 0 && lambda >= 0 ){
+						warning('infected overflow  -- reduce multiplicative noise sd')
+					}
+				}
+				if(method == 'negbin'){
+					I[t] <- rnbinom(n=1,mu=lambda,size=I[t-1]+1e-10)
+				}
+				if(method == 'pois'){
+					I[t] <- rpois(n=1,lambda=lambda)
+				}
+				
+				S[t] <- max(S[t-1] + data$births[t-1] - I[t] + rnorm(n=1,mean=0,sd=add.noise.sd),0)
+				
+				if(S[t] < 0 && (S[t-1] + data$births[t-1] - I[t]) >0 ){
+					warning('susceptible overflow  -- reduce additive noise sd')
+				}
+			}
+			res[,ct] <- I / adj.rho
+			Sres[,ct] <- S
+		}
+		
+	} else {
+		res <- NULL
 	}
 	
 	list(
 		fit=fit,
 		epsilon=epsilon,
-		sbar=sbar
+		sbar=sbar,
+		res=res,
+		Sres=Sres
 	)
 }
 
@@ -221,7 +289,7 @@ runltsir_NB_obj <- function(par,
 	Ipred <- rowSums(lagImat_adj)
 	
 	if (spline) {
-		fit <- gam(Inew~ s(period, bs="cc", k=26) + offset(log(sbar + Zminus)) + log(Ipred),
+		fit <- gam(Inew~ s(period, bs="cc") + offset(log(sbar + Zminus)) + log(Ipred),
 				   family=nb)
 	} else {
 		fit <- MASS::glm.nb(Inew~ -1 + as.factor(period) + offset(log(sbar + Zminus)) + log(Ipred))

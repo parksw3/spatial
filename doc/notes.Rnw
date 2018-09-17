@@ -110,6 +110,9 @@ library(tsiR)
 library(kernlab)
 library(MASS)
 library(mgcv)
+library(dplyr)
+library(tidyr)
+library(ggplot2); theme_set(theme_bw())
 source("../R/lagtsir.R")
 @
 
@@ -119,7 +122,7 @@ london <- twentymeas[["London"]]
 g_t_adj <- c(0.816, 1-0.816)
 
 ltsirfit <- runltsir(london, g_t_adj)
-tsirfit <- runtsir(data=london, method="deterministic", nsim=1, IP=2, inits.fit=FALSE)
+tsirfit <- runtsir(data=london, method="pois", nsim=100, IP=2, inits.fit=FALSE)
 @
 
 <<comptrans, echo = FALSE, fig.width=6, fig.height=4, cache=TRUE>>==
@@ -158,7 +161,7 @@ and perform a two dimensional optimization on $\epsilon$ and $\bar{S}$.
 Then, our residuals are much better:
 
 <<fit_NB, fig.width=6, fig.height=6, cache=TRUE>>==
-ltsirfit_NB <- runltsir_NB(london)
+ltsirfit_NB <- runltsir_NB(london, predict=TRUE, nsim=100)
 par(mfrow=c(2, 2))
 plot(ltsirfit_NB$fit)
 par(mfrow=c(1,1))
@@ -181,7 +184,7 @@ legend(
 
 However, it appears that there might be weak underlying structures in the residuals that we might have to deal with? Might be too weak to care about?
 
-<<resid2, fig.width=6, fig.height=4>>==
+<<resid2, fig.width=6, fig.height=4, cache=TRUE>>==
 par(mfrow=c(1, 2))
 plot(ltsirfit_NB$fit$residuals, type="l")
 pacf(ltsirfit_NB$fit$residuals)
@@ -192,7 +195,7 @@ par(mfrow=c(1,1))
 
 We can try to smooth transmission rate over time using cyclic splines (\texttt{s(period, bs=``cc'')}) with GAM.
 <<cache=TRUE>>==
-ltsirfit_spline <- runltsir_NB(london, spline=TRUE)
+ltsirfit_spline <- runltsir_NB(london, spline=TRUE, predict=TRUE, nsim=100)
 @
 
 Transmission rates?
@@ -216,8 +219,98 @@ legend(
 )
 @
 
+Note that $\epsilon$ estimated by the model is fairly small (1.4\%):
 
+<<cache=TRUE>>==
+ltsirfit_spline$epsilon
+@
 
+There's another spline fit that I built inside tsiR...
+
+<<cache=TRUE>>==
+tsirfit2 <- runtsir.spline(london, method="pois", nsim=100, IP=2, inits.fit=FALSE)
+@
+
+Now, we want to compare how each model predicts the time series:
+
+<<echo=FALSE, warning=FALSE, fig.width=6, fig.height=4, cache=TRUE>>==
+df1 <- data.frame(
+	time=london$time,
+	tsirfit$res[,1:100]
+) %>%
+	gather(key, value, -time) %>%
+	mutate(time=as.character(time)) %>%
+	group_by(time) %>%
+	summarize(
+		mean=mean(value),
+		lwr=quantile(value, 0.025),
+		upr=quantile(value, 0.975)
+	) %>%
+	mutate(time=as.numeric(time),
+		   type="tsir")
+
+df2 <- data.frame(
+	time=london$time,
+	tsirfit2$res[,1:100]
+) %>%
+	gather(key, value, -time) %>%
+	mutate(time=as.character(time)) %>%
+	group_by(time) %>%
+	summarize(
+		mean=mean(value),
+		lwr=quantile(value, 0.025),
+		upr=quantile(value, 0.975)
+	) %>%
+	mutate(time=as.numeric(time),
+		   type="tsir-spline")
+
+df3 <- data.frame(
+	time=london$time,
+	ltsirfit_NB$res
+) %>%
+	gather(key, value, -time) %>%
+	mutate(time=as.character(time)) %>%
+	group_by(time) %>%
+	summarize(
+		mean=mean(value),
+		lwr=quantile(value, 0.025),
+		upr=quantile(value, 0.975)
+	) %>%
+	mutate(time=as.numeric(time),
+		   type="lag-NB")
+
+df4 <- data.frame(
+	time=london$time,
+	ltsirfit_spline$res
+) %>%
+	gather(key, value, -time) %>%
+	mutate(time=as.character(time)) %>%
+	group_by(time) %>%
+	summarize(
+		mean=mean(value),
+		lwr=quantile(value, 0.025),
+		upr=quantile(value, 0.975)
+	) %>%
+	mutate(time=as.numeric(time),
+		   type="lag-spline")
+
+dftot <- bind_rows(df1, df2, df3, df4)
+
+gcomp <- ggplot(dftot) +
+	geom_point(data=london, aes(time, cases)) +
+	geom_path(aes(time, mean, col=type)) +
+	geom_ribbon(aes(time, ymin=lwr, ymax=upr, fill=type), alpha=0.2) +
+	scale_x_continuous(limits=c(1950, 1955))
+
+gcomp
+@
+
+facet?
+
+<<warning=FALSE, fig.width=6, fig.height=6, cache=TRUE>>==
+gcomp +
+	facet_wrap(~type)
+@
 
 \section*{Misc}
 
