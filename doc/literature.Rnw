@@ -1,0 +1,40 @@
+\documentclass{article}
+
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+
+\usepackage{natbib}
+\usepackage{hyperref}
+\bibliographystyle{chicago}
+
+\title{Notes}
+\date{\today}
+\author{Sang Woo Park}
+
+\begin{document}
+\maketitle
+
+\section{TSIR theory}
+
+\begin{itemize}
+	\item The TSIR model was first formally introduced by \cite{bjornstad2002dynamics}. The model relies on five basic assumptions: (1) the true number of cases can be inferred from the observed number of cases and underreporting rate, (2) reconstructed susceptible dynamics is deterministic, (3) spatial coupling process is a stochastic process that is indepdent of number of cases (4) transmission rate varies across time, and (5) zero observations do not provide any information for the parameter estimation.
+	Unlike recent versions of the model, the original framework included a stochastic migration term. All other parameters are estimated deterministically using linear regression except for the migration term, which is estimated by minimizing the Kullback-Leibler distance between the distribution of observed and simulated cases.
+\end{itemize}
+
+\section{Susceptible reconstruction}
+
+\begin{itemize}
+	\item The susceptible reconstruction method used in the TSIR framework was first introduced by \cite{finkenstadt2000time}. It models susceptible dynamics (deviation from long-term average) as residuals of a localized linear regression of cumulative birth against cumulative cases (\cite{dalziel2016persistent} suggests that fitting cumulative birth as a function of cumulative cases lead to oversmoothing).
+\end{itemize}
+
+\section{Applications of the TSIR model}
+
+\begin{itemize}
+	\item \cite{dalziel2016persistent} compares pre-vaccination measles time series from 
+\end{itemize}
+
+
+\bibliography{spatial}
+\end{document}

@@ -225,7 +225,7 @@ Note that $\epsilon$ estimated by the model is fairly small (1.4\%):
 ltsirfit_spline$epsilon
 @
 
-There's another spline fit that I built inside tsiR...
+There's another spline fit that I built inside tsiR (without a lag term)...
 
 <<cache=TRUE>>==
 tsirfit2 <- runtsir.spline(london, method="pois", nsim=100, IP=2, inits.fit=FALSE)
@@ -312,15 +312,32 @@ gcomp +
 	facet_wrap(~type)
 @
 
+\section{Spatial spread}
+
+Ultimately, we want to understand the spatial spread of an epidemic.
+\begin{equation}
+\begin{aligned}
+S_{t+1,k} &= B_{t,k} + S_{t,k} - I_{t+1,k} \\
+I_{t+1,k} &= \beta_{t,k} \frac{S_{t,k}}{N_{t,k}} \left(\left(1 - \epsilon \sum_{j\neq k} f(d(k, j)) \right) I_{t, k} + \epsilon \sum_{j\neq k} f(d(j, k)) I_{t, j}  \right)^\alpha
+\end{aligned}
+\end{equation}
+For convenience, we write
+\begin{equation}
+\hat{I}_{t,k} = \left(\left(1 - \epsilon \sum_{j\neq k} f(d(k, j)) \right) I_{t, k} + \epsilon \sum_{j\neq k} f(d(j, k)) I_{t, j}  \right)
+\end{equation}
+Then, we can linearize the problem:
+\begin{equation}
+I_{t+1,k} = \mathrm{NegBin}\left(\exp \left( \log \beta_{t,k} + \log S_{t,k} + \alpha \log \hat{I}_{t,k} - \log N_{t, k}\right)\right)
+\end{equation}
+
+
+
 \section*{Misc}
 
 See Vehtari - Slick time series... (Andrew Gelman); see the cover of third edition of Bayesian analysis.
 
 <<eval=FALSE>>==
-
-library(MASS)
-
-# glm.fit(family=negative.binomial(theta=10, link="identity"))
+# MASS::glm.fit(family=negative.binomial(theta=10, link="identity"))
 
 @
 

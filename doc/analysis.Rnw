@@ -1,0 +1,66 @@
+\documentclass{article}
+
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+
+\usepackage{natbib}
+\usepackage{hyperref}
+\bibliographystyle{chicago}
+
+\title{Notes}
+\date{\today}
+\author{Sang Woo Park}
+
+\begin{document}
+\maketitle
+
+\section{Gravity TSIR model}
+
+Deterministic model is given by:
+\begin{equation}
+S_{k, t+1} = S_{k, t} + B_{k, t} - I_{k, t+1},
+\end{equation}
+where
+\begin{equation}
+I_{k, t+1} = \frac{\beta_{k, t} S_{k, t} \left(I_{k, t} + \sum_{j \neq k}  m_{j \to k} - \sum_{i \neq k} m_{k \to i} \right)^\alpha}{N_{k, t}}
+\end{equation}
+Here, $m$ is defined to be
+\begin{equation}
+
+\end{equation}
+Given parameters of $m$, we can construct 
+\begin{equation}
+\hat{I}_{k, t} = I_{k, t} + \sum_{j \neq k}  m_{j \to k} - \sum_{i \neq k} m_{k \to i}.
+\end{equation}
+Then, we can allow for mixed model structure:
+\begin{equation}
+\begin{aligned}
+I_{k, t+1} &\sim \mathrm{Distrib} \left( \exp\left(\log \beta_{k, t} + \log S_{k, t} + \alpha_k \log \hat{I}_{k, t} - \log N_{k,t}\right)\right)\\
+\log \beta_{k, t} &\sim \mathrm{Normal}(\beta_t, \sigma_{\beta_t}^2)\\
+\alpha_k &\sim \mathrm{Normal}(\alpha, \sigma_{\alpha}^2)
+\end{aligned}
+\end{equation}
+This model can be fitted using GLM (zero-inflated to account for extinction events?) conditional on the parameters of $m_{j \to k}$.
+Finally, parameters of $m_{j \to k}$ can be estimated using profile likelihood.
+
+In order to fit the model, we have to be able to reconstruct susceptible dynamics.
+Assuming that cases are reported where they became infected, we can write $I_{k, t} = I_{k,t}^{(r)}/\rho_t$.
+Then, the following equation suggests that the susceptible population can be reconstructed locally:
+\begin{equation}
+S_{k, t+1} = S_{k, t} + B_{k, t} - I_{k, t+1}^{(r)}/\rho_t,
+\end{equation}
+
+Ideas to think about:
+\begin{itemize}
+	\item How does transmission rate vary across regions?
+	\item Random effects in the intercept instead?
+	\item Splines to smooth spatio-temporal effect?
+\end{itemize}
+
+
+
+
+\bibliography{spatial}
+\end{document}
