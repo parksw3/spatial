@@ -1,4 +1,4 @@
-library(mgcv)
+library(scam)
 library(dplyr)
 library(bbmle)
 library(gamm4)
