@@ -1,0 +1,1 @@
+sqsub -q serial -o $fn.%J.out --mpp 8G -r 60h R CMD BATCH --vanilla analysis_UK.R analysis_UK.Rout

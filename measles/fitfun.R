@@ -1,46 +1,25 @@
 derivative <- tsiR::derivative
 
-## taken from the tsiR package
-## need to be careful..
+## be careful...
 reconstruct <- function(cases,
 						births,
-						sigmamax=3){
+						k=10,
+						m=6){
 	cumcases <- cumsum(cases)
 	cumbirth <- cumsum(births)
 	
-	X <- cumcases
-	Y <- cumbirth
+	dd <- data.frame(
+		y=cumcases,
+		x=cumbirth
+	)
 	
-	x <- seq(X[1], X[length(X)], length=length(X))
-	y <- approxfun(X, Y)(x)
-	y[1] <- y[2] - (y[3]-y[2])
+	fit <- scam(y~s(x, k=k, bs="mpi", m=m), data=dd)
 	
-	sigvec <- seq(sigmamax,0,-0.1)
+	adj.rho <- derivative(cumbirth, predict(fit))
 	
-	for(it in 1:length(sigvec)){
-		Yhat <- predict(gausspr(x,y,variance.model=TRUE,fit=TRUE,tol=1e-7,
-								var=9.999999999999999999e-3,
-								kernel="rbfdot",
-								kpar=list(sigma=sigvec[it])),X)
-		
-		
-		if(sigvec[it] <= min(sigvec)){
-			## use the loess then
-			print('gaussian regressian failed -- switching to loess regression')
-			Yhat <- predict(loess(y~x,se=T,family='gaussian',degree=1,model=T),X)
-		}
-		
-		Z <- Y - Yhat
-		rho <- derivative(X,Yhat)
-		if(length(which(rho<=1))==0){
-			break()
-		}
-	}
-	
-	adj.rho <- rho
 	list(
-		rho=adj.rho,
-		Z=Z
+		rho=1/adj.rho,
+		Z=-fit$residuals
 	)
 }
 
@@ -73,20 +52,20 @@ fitfun <- function(log.theta,
 	
 	Spredmat <- head(Smat, -1)
 	
-	period <- rep(1:26, 100)[1:nrow(adjincmat)]
+	period <- rep(1:52, 100)[1:nrow(Inewmat)]
 	
 	fitdata <- data.frame(
 		logInew=log(c(Inewmat)+1),
-		logI=log(c(Ipredmat)+1),
+		logI=log(c(Ipredmat)),
 		logS=log(c(Spredmat)),
 		region=rep(names(popsize), each=nrow(Inewmat)),
-		period=rep(head(period, -1), ncol(Inewmat)),
+		period=rep(period, ncol(Inewmat)),
 		logpop=rep(log(popsize), each=nrow(Inewmat))
 	)
 	
 	fitdata$off <- fitdata$logS-fitdata$logpop
 	
-	gamm4fit <- try(gamm4(logInew ~ t2(period, region, k=26, bs=c("cc", "re"))  
+	gamm4fit <- try(gamm4(logInew ~ t2(period, region, k=52, bs=c("cc", "re"))  
 						 + logI + offset(off),
 						 random=~(logI||region),
 						 data=fitdata))
@@ -126,4 +105,3 @@ nllfun <- function(log.theta,
 	
 	nll
 }
-
