@@ -30,7 +30,7 @@ fitfun <- function(log.theta,
 				   distmat,
 				   Imat,
 				   Smat,
-				   popsize) {
+				   popmat) {
 	theta <- exp(log.theta)
 	rho <- exp(log.rho)
 	tau <- exp(log.tau)
@@ -40,7 +40,7 @@ fitfun <- function(log.theta,
 	diag(invdist) <- 0
 	
 	## M[i, j] represents i to j movement
-	M <- theta * t(popsize^tau * invdist^rho)
+	M <- theta * t(popmat[1,]^tau * invdist^rho)
 	
 	diag(M) <- 1-rowSums(M)
 	
@@ -58,9 +58,9 @@ fitfun <- function(log.theta,
 		logInew=log(c(Inewmat)+1),
 		logI=log(c(Ipredmat)),
 		logS=log(c(Spredmat)),
-		region=rep(names(popsize), each=nrow(Inewmat)),
+		region=rep(colnames(popmat), each=nrow(Inewmat)),
 		period=rep(period, ncol(Inewmat)),
-		logpop=rep(log(popsize), each=nrow(Inewmat))
+		logpop=c(head(log(popmat), -1))
 	)
 	
 	fitdata$off <- fitdata$logS-fitdata$logpop
@@ -89,9 +89,9 @@ nllfun <- function(log.theta,
 				   distmat,
 				   Imat,
 				   Smat,
-				   popsize,
+				   popmat,
 				   verbose=FALSE) {
-	fit <- fitfun(log.theta, log.tau, log.rho, log.scale, distmat, Imat, Smat, popsize)
+	fit <- fitfun(log.theta, log.tau, log.rho, log.scale, distmat, Imat, Smat, popmat)
 	
 	gamm4fit <- fit$gamm4fit
 	

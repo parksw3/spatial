@@ -25,13 +25,16 @@ rhomat <- reconstruct_list %>%
 	lapply("[[", "rho") %>%
 	do.call(what="cbind")
 
-popsize <- measles_list %>%
+popmat <- measles_list %>%
 	lapply("[[", "pop") %>%
-	do.call(what="cbind") %>%
-	"["(1,)
+	do.call(what="cbind")
+
+birthmat <- measles_list %>%
+	lapply("[[", "rec") %>%
+	do.call(what="cbind")
 
 ## assumption
-sbar <- 0.035 * popsize
+sbar <- 0.035 * popmat[1,]
 
 Smat <- Zmat + matrix(rep(sbar, nrow(Zmat)), ncol=ncol(Zmat), byrow=TRUE)
 
@@ -56,10 +59,10 @@ fit <- mle2(nllfun,
 	 	distmat=distmat,
 	 	Imat=adjincmat,
 	 	Smat=Smat,
-	 	popsize=popsize,
+	 	popmat=popmat,
 	 	verbose=TRUE
 	 )
 )
 
-save("Zmat", "popsize", "Smat", "rhomat", "incmat", "adjincmat", 
+save("Zmat", "popmat", "birthmat", "Smat", "rhomat", "incmat", "adjincmat", 
 	 "distmat", "fit", file="analysis_US.rda")
