@@ -58,7 +58,7 @@ model {
 	logit_theta ~ normal(-20, 5);
 	
 	logit_sprop ~ normal(mu_sprop, sqrt(sigma2_sprop));
-	mu_sprop ~ normal(0, 5);
+	mu_sprop ~ normal(0, 10);
 	sigma2_sprop ~ inv_gamma(1, 1);
 	
 	for (i in 1:nbasis) {
