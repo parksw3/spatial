@@ -2,11 +2,13 @@ data {
 	int ncity; // number of cities
 	int nobs; // number of observations per city; this should be technically nobs - 1
 	int nbasis;
-	matrix[ncity, nobs] Inew; // tail(Imat, -1)
+	int Inew[ncity, nobs]; // c(tail(Imat, -1))
 	matrix[ncity, nobs] Iprev; // head(Imat, -1)
 	matrix[ncity, nobs] Zmat;
-	vector[ncity] popsize; // population size
+	matrix[ncity, nobs] popmat; // population size head(popmat, -1)
+	matrix[ncity, nobs] logpopmat; // population size head(popmat, -1)
 	matrix[nbasis, nobs] Bmat; // basis matrix
+	matrix[ncity, ncity] M;
 }
 
 parameters {
@@ -30,44 +32,49 @@ transformed parameters {
 	real<lower=0, upper=1> theta;
 	vector<lower=0, upper=1>[ncity] sprop;
 	vector[ncity] sbar;
-	matrix[ncity, ncity] m;
-	matrix[ncity, nobs] Ipred;
+	matrix[ncity, ncity] m; // m[i,j] models j->i
+ 	matrix[ncity, nobs] Ipred;
 	matrix[ncity, nobs] logIhat;
 	
 	theta = inv_logit(logit_theta);
 	sprop = inv_logit(logit_sprop);
 	
-	sbar = sprop * popsize;
+	sbar = sprop .* to_vector(popmat[,1]);
 	
-	Smat = sbar + Zmat;
+	m = rep_matrix(theta, ncity, ncity) .* M;
+	
+	for (i in 1:ncity) {
+		m[i,i] = 1 - sum(m[,i]);
+	}
 	
 	Ipred = m * Iprev;
 	
-	for (i in 1:city) {
-		logIhat[i,] = amat[i,] * Bmat + log(sbar[i] + Zmat[i,]) + alpha[i] * log(Ipred[i,]);
+	for (i in 1:ncity) {
+		logIhat[i,] = amat[i,] * Bmat + log(sbar[i] + Zmat[i,]) + alpha[i] * log(Ipred[i,]) - logpopmat[i,];
 	}
 }
 
 model {
-	logit_theta ~ normal(0, 20);
+	logit_theta ~ normal(-20, 5);
 	
 	logit_sprop ~ normal(mu_sprop, sqrt(sigma2_sprop));
-	mu_sprop ~ normal(0, 20);
+	mu_sprop ~ normal(0, 5);
 	sigma2_sprop ~ inv_gamma(1, 1);
 	
 	for (i in 1:nbasis) {
 		amat[,i] ~ normal(mu_a[i], sqrt(sigma2_a));
 	}
 	
-	mu_a ~ normal(0, 20);
+	mu_a ~ normal(log(34), 2);
 	sigma2_a ~ inv_gamma(1, 1);
 	
 	alpha ~ normal(mu_alpha, sqrt(sigma2_alpha));
 	mu_alpha ~ normal(1, 0.1);
 	sigma2_alpha ~ inv_gamma(1,1);
 	
-	for (i in 1:city) {
+	for (i in 1:ncity) {
 		Inew[i,] ~ neg_binomial_2_log(logIhat[i,], phi);
 	}
-	phi ~ gamma(2, 1/30);
+	
+	phi ~ gamma(2, 0.025);
 }
