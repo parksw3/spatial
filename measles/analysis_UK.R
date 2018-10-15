@@ -34,9 +34,9 @@ birthmat <- measles_list %>%
 	do.call(what="cbind")
 
 ## assumption
-sbar <- 0.035 * popmat[1,]
+sbar <- 0.035 * popmat
 
-Smat <- Zmat + matrix(rep(sbar, nrow(Zmat)), ncol=ncol(Zmat), byrow=TRUE)
+Smat <- Zmat + sbar
 
 incmat <- measles_list %>%
 	lapply("[[", "cases") %>%

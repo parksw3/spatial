@@ -58,7 +58,7 @@ fitfun <- function(log.theta,
 		logInew=log(c(Inewmat)+1),
 		logI=log(c(Ipredmat)),
 		logS=log(c(Spredmat)),
-		region=rep(colnames(popmat), each=nrow(Inewmat)),
+		region=rep(colnames(Inewmat), each=nrow(Inewmat)),
 		period=rep(period, ncol(Inewmat)),
 		logpop=c(head(log(popmat), -1))
 	)
