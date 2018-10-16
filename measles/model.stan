@@ -69,7 +69,7 @@ model {
 	sigma2_a ~ inv_gamma(1, 1);
 	
 	alpha ~ normal(mu_alpha, sqrt(sigma2_alpha));
-	mu_alpha ~ normal(1, 0.1);
+	mu_alpha ~ normal(1, 0.2);
 	sigma2_alpha ~ inv_gamma(1,1);
 	
 	for (i in 1:ncity) {

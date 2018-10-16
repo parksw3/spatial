@@ -6,7 +6,7 @@ load("stan_UK.rda")
 
 ext <- rstan::extract(fit)
 
-x <- seq(0.5, 26.5, by=0.1); k <- seq(0, 26, by=2) + 0.5
+x <- seq(0.5, 52.5, by=0.1); k <- seq(0, 52, by=2) + 0.5
 BX <- cSplineDes(x,k)
 
 tfun <- function(coefmat) {
@@ -61,8 +61,8 @@ g1 <- ggplot(tregion) +
 	geom_ribbon(aes(period, ymin=lwr, ymax=upr), alpha=0.2, fill=2, col=2, lty=2) +
 	geom_text(data=alphadata, x=Inf, y=Inf, aes(label=text), hjust=1.05, vjust=1.25) +
 	facet_wrap(~city, nrow=2) +
-	scale_x_continuous(expand=c(0,0)) +
-	scale_y_continuous("transmission rate", limits=c(20, 80)) +
+	scale_x_continuous("biweek", expand=c(0,0)) +
+	scale_y_continuous("transmission rate", limits=c(20, 90)) +
 	theme(
 		panel.grid = element_blank(),
 		strip.background = element_blank(),

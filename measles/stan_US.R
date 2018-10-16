@@ -53,7 +53,7 @@ diag(invdist) <- 0
 ## M[i, j] represents j to i movement
 M <- popmat[1,] * invdist
 
-x <- rep(1:26, 100)[1:(nrow(popmat)-1)]; k <- seq(0, 26, by=2) + 0.5
+x <- rep(1:52, 100)[1:(nrow(popmat)-1)]; k <- seq(0, 52, by=2) + 0.5
 BX <- cSplineDes(x,k)
 
 standata <- list(
