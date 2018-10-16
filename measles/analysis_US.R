@@ -9,7 +9,8 @@ measles_data <- read.csv("measlesUKUS.csv")
 
 measles_US <- measles_data %>% 
 	filter(country=="US") %>%
-	mutate(cases=ifelse(is.na(cases), 0, cases))
+	mutate(cases=ifelse(is.na(cases), 0, cases)) %>%
+	filter(year >= 1920, year <= 1940)
 
 measles_list <- measles_US %>%
 	split(as.character(.$loc))

@@ -6,17 +6,17 @@ source("fitfun.R")
 
 measles_data <- read.csv("measlesUKUS.csv")
 
-measles_UK <- measles_data %>% 
-	filter(country=="UK") %>%
-	mutate(cases=ifelse(is.na(cases), 0, cases))
+measles_US <- measles_data %>% 
+	filter(country=="US") %>%
+	mutate(cases=ifelse(is.na(cases), 0, cases)) %>%
+	filter(year >= 1920, year <= 1940)
 
-measles_list <- measles_UK %>%
+measles_list <- measles_US %>%
 	split(as.character(.$loc))
 
 nn <- names(tail(sort(sapply(measles_list, function(x) max(x$pop))), 10))
 
 measles_list <- measles_list[nn] ## for teseting purposes
-
 
 reconstruct_list <- measles_list %>%
 	lapply(function(data) reconstruct(data$cases, data$rec))
@@ -72,7 +72,7 @@ standata <- list(
 rt <- stanc(file="model.stan")
 sm <- stan_model(stanc_ret = rt, verbose=FALSE)
 
-set.seed(101)
+set.seed(101) 
 system.time(fit <- sampling(sm, data=standata, chains=1, iter=2000, thin=1))
 
-save("fit", "standata", file="stan_UK.rda")
+save("nn", "fit", "standata", file="stan_US.rda")

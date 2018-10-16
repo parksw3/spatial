@@ -31,15 +31,13 @@ parameters {
 transformed parameters {
 	real<lower=0, upper=1> theta;
 	vector<lower=0, upper=1>[ncity] sprop;
-	vector[ncity] sbar;
+	matrix[ncity, nobs] sbar;
 	matrix[ncity, ncity] m; // m[i,j] models j->i
  	matrix[ncity, nobs] Ipred;
 	matrix[ncity, nobs] logIhat;
 	
 	theta = inv_logit(logit_theta);
 	sprop = inv_logit(logit_sprop);
-	
-	sbar = sprop .* to_vector(popmat[,1]);
 	
 	m = rep_matrix(theta, ncity, ncity) .* M;
 	
@@ -50,7 +48,9 @@ transformed parameters {
 	Ipred = m * Iprev;
 	
 	for (i in 1:ncity) {
-		logIhat[i,] = amat[i,] * Bmat + log(sbar[i] + Zmat[i,]) + alpha[i] * log(Ipred[i,]) - logpopmat[i,];
+		sbar[i,] = rep_vector(sprop[i], nobs)' .* popmat[i,];
+		
+		logIhat[i,] = amat[i,] * Bmat + log(sbar[i,] + Zmat[i,]) + alpha[i] * log(Ipred[i,]) - logpopmat[i,];
 	}
 }
 
