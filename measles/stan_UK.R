@@ -17,7 +17,6 @@ nn <- names(tail(sort(sapply(measles_list, function(x) max(x$pop))), 10))
 
 measles_list <- measles_list[nn] ## for teseting purposes
 
-
 reconstruct_list <- measles_list %>%
 	lapply(function(data) reconstruct(data$cases, data$rec))
 
@@ -75,4 +74,4 @@ sm <- stan_model(stanc_ret = rt, verbose=FALSE)
 set.seed(101)
 system.time(fit <- sampling(sm, data=standata, chains=1, iter=2000, thin=1))
 
-save("fit", "standata", file="stan_UK.rda")
+save("nn", "fit", "standata", file="stan_UK.rda")
