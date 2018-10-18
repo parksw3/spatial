@@ -62,7 +62,7 @@ g1 <- ggplot(tregion) +
 	geom_text(data=alphadata, x=Inf, y=Inf, aes(label=text), hjust=1.05, vjust=1.25) +
 	facet_wrap(~city, nrow=2) +
 	scale_x_continuous("biweek", expand=c(0,0)) +
-	scale_y_continuous("transmission rate", limits=c(20, 90)) +
+	scale_y_continuous("transmission rate", limits=c(10, 60)) +
 	theme(
 		panel.grid = element_blank(),
 		strip.background = element_blank(),

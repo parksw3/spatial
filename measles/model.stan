@@ -21,6 +21,9 @@ parameters {
 	vector[nbasis] mu_a;
 	real<lower=0> sigma2_a;
 	
+	real mu_a2;
+	real<lower=0> sigma2_a2;
+	
 	vector<lower=0>[ncity] alpha;
 	real<lower=0> mu_alpha;
 	real<lower=0> sigma2_alpha;
@@ -65,8 +68,11 @@ model {
 		amat[,i] ~ normal(mu_a[i], sqrt(sigma2_a));
 	}
 	
-	mu_a ~ normal(log(34), 2);
+	mu_a ~ normal(mu_a2, sigma2_a2);
 	sigma2_a ~ inv_gamma(1, 1);
+	
+	mu_a2 ~ normal(log(34), 2);
+	sigma2_a2 ~ inv_gamma(1, 1);
 	
 	alpha ~ normal(mu_alpha, sqrt(sigma2_alpha));
 	mu_alpha ~ normal(1, 0.2);

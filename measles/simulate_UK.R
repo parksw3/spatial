@@ -1,7 +1,9 @@
 library(rstan)
+library(tidyr)
 library(dplyr)
 library(ggplot2); theme_set(theme_bw())
 library(gridExtra)
+source("../R/reconstruct.R")
 source("fitfun.R")
 source("simulate.R")
 
@@ -21,7 +23,7 @@ nn <- names(tail(sort(sapply(measles_list, function(x) max(x$pop))), 10))
 measles_list <- measles_list[nn] ## for teseting purposes
 
 reconstruct_list <- measles_list %>%
-	lapply(function(data) reconstruct(data$cases, data$rec))
+	lapply(function(data) reconstruct_scam(data$cases, data$rec))
 
 birthmat <- measles_list %>%
 	lapply("[[", "rec") %>%

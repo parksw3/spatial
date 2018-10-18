@@ -18,6 +18,17 @@ simfun <- function(tmat, ## transmission matrix ncity by nperiod
 				   function(x, p) rbinom(length(x), round(x), p),
 				   deterministic=function(x,p) x*p) 
 	
+	pfun <- switch(method,
+				   function(m,I) {
+				   		rowSums(sapply(1:10, function(x){rmultinom(1, I[x], m[,x])}))
+				   },
+				   deterministic=function(m,I) m %*% I)
+	
+	bfun <- switch(method,
+				   function(x) rpois(length(x), x),
+				   deterministic=function(x) x
+				   )
+	
 	ncity <- nrow(tmat)
 	nperiod <- ncol(tmat)
 	
@@ -37,16 +48,18 @@ simfun <- function(tmat, ## transmission matrix ncity by nperiod
 			
 			if (period==0) period <- 52
 			
-			Iprev <- mixmat %*% simmatI[,t-1]
+			Iprev <- Iprev2 <- pfun(mixmat, simmatI[,t-1])
+			
+			Iprev2[Iprev2==0] <- 1
 			
 			if (all(Iprev==0)) break
 			
-			incidence <- mfun(tmat[,period]*simmatS[,t-1]*(Iprev)^alpha/popmat[,t-1], Iprev)
+			incidence <- mfun(tmat[,period]*simmatS[,t-1]*(Iprev)^alpha/popmat[,t-1], Iprev2)
 			
 			ii <- pmin(simmatS[,t-1], incidence)
 			
 			simmatI[,t] <- ii
-			simmatS[,t] <- simmatS[,t-1] - ii + birthmat[,t-1]
+			simmatS[,t] <- simmatS[,t-1] - ii + bfun(birthmat[,t-1])
 			simmatC[,t] <- rfun(ii, 1/rhomat[,t])
 		}
 		

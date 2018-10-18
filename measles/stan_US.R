@@ -2,6 +2,7 @@ library(mgcv)
 library(dplyr)
 library(scam)
 library(rstan)
+source("../R/reconstruct.R")
 source("fitfun.R")
 
 measles_data <- read.csv("measlesUKUS.csv")
@@ -19,7 +20,7 @@ nn <- names(tail(sort(sapply(measles_list, function(x) max(x$pop))), 10))
 measles_list <- measles_list[nn] ## for teseting purposes
 
 reconstruct_list <- measles_list %>%
-	lapply(function(data) reconstruct(data$cases, data$rec))
+	lapply(function(data) reconstruct_scam(data$cases, data$rec))
 
 Zmat <- reconstruct_list %>%
 	lapply("[[", "Z") %>%

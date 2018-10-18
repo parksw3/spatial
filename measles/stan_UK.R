@@ -2,13 +2,15 @@ library(mgcv)
 library(dplyr)
 library(scam)
 library(rstan)
+source("../R/reconstruct.R")
 source("fitfun.R")
 
 measles_data <- read.csv("measlesUKUS.csv")
 
 measles_UK <- measles_data %>% 
 	filter(country=="UK") %>%
-	mutate(cases=ifelse(is.na(cases), 0, cases))
+	mutate(cases=ifelse(is.na(cases), 0, cases)) %>%
+	filter(year < 1965)
 
 measles_list <- measles_UK %>%
 	split(as.character(.$loc))
@@ -18,7 +20,7 @@ nn <- names(tail(sort(sapply(measles_list, function(x) max(x$pop))), 10))
 measles_list <- measles_list[nn] ## for teseting purposes
 
 reconstruct_list <- measles_list %>%
-	lapply(function(data) reconstruct(data$cases, data$rec))
+	lapply(function(data) reconstruct_scam(data$cases, data$rec))
 
 Zmat <- reconstruct_list %>%
 	lapply("[[", "Z") %>%
@@ -70,7 +72,7 @@ standata <- list(
 
 rt <- stanc(file="model.stan")
 sm <- stan_model(stanc_ret = rt, verbose=FALSE)
-
+ 
 set.seed(101)
 system.time(fit <- sampling(sm, data=standata, chains=1, iter=2000, thin=1))
 

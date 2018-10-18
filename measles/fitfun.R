@@ -1,28 +1,3 @@
-derivative <- tsiR::derivative
-
-## be careful...
-reconstruct <- function(cases,
-						births,
-						k=10,
-						m=6){
-	cumcases <- cumsum(cases)
-	cumbirth <- cumsum(births)
-	
-	dd <- data.frame(
-		y=cumcases,
-		x=cumbirth
-	)
-	
-	fit <- scam(y~s(x, k=k, bs="mpi", m=m), data=dd)
-	
-	adj.rho <- derivative(cumbirth, predict(fit))
-	
-	list(
-		rho=1/adj.rho,
-		Z=-fit$residuals
-	)
-}
-
 fitfun <- function(log.theta,
 				   log.rho,
 				   log.tau,
