@@ -6,7 +6,7 @@ load("stan_UK.rda")
 
 ext <- rstan::extract(fit)
 
-x <- seq(0.5, 52.5, by=0.1); k <- seq(0, 52, by=2) + 0.5
+x <- seq(0, 52, by=0.1); k <- seq(0, 52, by=2)
 BX <- cSplineDes(x,k)
 
 tfun <- function(coefmat) {

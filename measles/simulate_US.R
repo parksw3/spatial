@@ -1,9 +1,11 @@
 library(scam)
 library(rstan)
+library(tidyr)
 library(dplyr)
 library(ggplot2); theme_set(theme_bw())
 library(gridExtra)
 source("../R/reconstruct.R")
+source("../R/summary.R")
 source("fitfun.R")
 source("simulate.R")
 
@@ -39,7 +41,7 @@ rhomat <- reconstruct_list %>%
 
 ext <- rstan::extract(fit)
 
-x <- 1:52; k <- seq(0, 52, by=2) + 0.5
+x <- 1:52; k <- seq(0, 52, by=2)
 BX <- cSplineDes(x,k)
 
 psample <- seq(10, 1000, by=10)
@@ -68,7 +70,8 @@ for (j in 1:100) {
 		data.frame(
 			city=nn,
 			max=apply(cc, 1, max),
-			zero=apply(cc, 1, function(y) sum(y==0)/ncol(cc))
+			zero=apply(cc, 1, function(y) sum(y==0)/ncol(cc)),
+			period=apply(cc, 1, pfun)
 		)
 	}) %>%
 		bind_rows(.id="sim")
@@ -89,7 +92,8 @@ truesumm <- measles_list %>%
 		data.frame(
 			city=unique(x$loc),
 			max=max(x$cases),
-			zero=sum(x==0)/nrow(x)
+			zero=sum(x==0)/nrow(x),
+			period=pfun(x$cases)
 		)
 	}) %>%
 	bind_rows(.id="city") %>%
@@ -103,6 +107,7 @@ g1 <- ggplot(combdf %>% filter(key=="max")) +
 	geom_point(aes(tvalue, mean)) +
 	geom_errorbar(aes(tvalue, ymin=lwr, ymax=upr), width=0.1) +
 	geom_abline(intercept=0, slope=1) +
+	geom_smooth(aes(tvalue, mean), method="lm", se=FALSE, lty=2, fullrange=TRUE) +
 	xlab("True maxima") +
 	ylab("Simulated maxima")
 
@@ -110,9 +115,18 @@ g2 <- ggplot(combdf %>% filter(key=="zero")) +
 	geom_point(aes(tvalue, mean)) +
 	geom_errorbar(aes(tvalue, ymin=lwr, ymax=upr), width=0.0005) +
 	geom_abline(intercept=0, slope=1) +
+	geom_smooth(aes(tvalue, mean), method="lm", se=FALSE, lty=2, fullrange=TRUE) +
 	xlab("True proportion of zeroes") +
 	ylab("Simulated proportion of zeroes")
 
-gtot <- arrangeGrob(g1, g2, nrow=1)
+g3 <- ggplot(combdf %>% filter(key=="period")) +
+	geom_point(aes(tvalue, mean)) +
+	geom_errorbar(aes(tvalue, ymin=lwr, ymax=upr), width=0.0005) +
+	geom_abline(intercept=0, slope=1) +
+	geom_smooth(aes(tvalue, mean), method="lm", se=FALSE, lty=2, fullrange=TRUE) +
+	xlab("True period") +
+	ylab("Simulated period")
 
-ggsave("simulate_US.pdf", gtot, width=8, height=6)
+gtot <- arrangeGrob(g1, g2, g3, nrow=1)
+
+ggsave("simulate_US.pdf", gtot, width=12, height=6)

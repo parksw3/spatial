@@ -54,7 +54,7 @@ diag(invdist) <- 0
 ## M[i, j] represents j to i movement
 M <- popmat[1,] * invdist
 
-x <- rep(1:52, 100)[1:(nrow(popmat)-1)]; k <- seq(0, 52, by=2) + 0.5
+x <- rep(1:52, 100)[1:(nrow(popmat)-1)]; k <- seq(0, 52, by=2)
 BX <- cSplineDes(x,k)
 
 standata <- list(
@@ -69,10 +69,10 @@ standata <- list(
 	Bmat=t(BX),
 	M=M/1e7
 )
-
+ 
 rt <- stanc(file="model.stan")
 sm <- stan_model(stanc_ret = rt, verbose=FALSE)
- 
+
 set.seed(101)
 system.time(fit <- sampling(sm, data=standata, chains=1, iter=2000, thin=1))
 

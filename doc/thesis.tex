@@ -35,19 +35,19 @@ Recall that the susceptible population dynamics can be written as follows:
 \begin{equation}
 S_{t+1} = S_{t} + B_t - I_{t+1}.
 \end{equation}
-Rewriting incidence as product of observed cases, $C_t$, divided by the reporting rate, $\rho_t$, we obtain the following:
+Rewriting incidence as product of observed cases, $C_{t+1}$, divided by the reporting rate, $\rho_{t+1}$, we obtain the following:
 \begin{equation}
-S_{t+1} = S_t + B_t - \frac{C_t}{\rho_t}.
+S_{t+1} = S_t + B_t - \frac{C_{t+1}}{\rho_{t+1}}.
 \end{equation}
 Iteratively solving the equation yields the following relation:
 \begin{equation}
-S_{t+1} =  S_1 + \sum_{i=1}^t B_i - \sum_{i=1}^t \frac{C_i}{\rho_i}.
+S_{t+1} =  S_1 + \sum_{i=1}^t B_i - \sum_{i=1}^t \frac{C_{i+1}}{\rho_{i+1}}.
 \label{eq:sus}
 \end{equation}
 Representing susceptible dynamics as a deviation from the mean number of susceptibles $S_t = \bar{S} + Z_t$, \cite{finkenstadt2000time} showed dynamics of $Z_t$ and $\rho_t$ can be recovered from the data by fitting a smooth curve to cumulative birth as a function of cumulative cumulative cases. 
 \cite{dalziel2016persistent} then claimed that the result can be generalized by representing susceptible dynamics as a deviation from moving average, $S_t = \sigma N_t + W_t$, where $\sigma$ is proportion susceptible:
 \begin{equation}
-\sum_{i=1}^t B_i = \sum_{i=1}^t \frac{C_i}{\rho_i} + W_{t+1} - W_1 + \sigma (N_{t+1} - N_1).
+\sum_{i=1}^t B_i = \sum_{i=1}^t \frac{C_{i+1}}{\rho_{i+1}} + W_{t+1} - W_1 + \sigma (N_{t+1} - N_1).
 \label{eq:gensus}
 \end{equation}
 However, they did not provide sufficient theoretical justification; here, we analyze the claimed generalization.
@@ -56,17 +56,55 @@ However, they did not provide sufficient theoretical justification; here, we ana
 
 First, consider the case when the reporting is contant ($\rho_i = \rho$ for all $\rho \in \mathbb{N}$), equation~\ref{eq:gensus} simplifies to 
 \begin{equation}
-\sum_{i=1}^t B_i = \frac{1}{\rho} \sum_{i=1}^t C_i + W_{t+1} - W_1 + \sigma (N_{t+1} - N_1).
+\sum_{i=1}^t B_i = \frac{1}{\rho} \sum_{i=1}^t C_{i+1} + W_{t+1} - W_1 + \sigma (N_{t+1} - N_1).
 \end{equation}
-Writing $X_{t+1} = \sum_{i=1}^t C_i$ and $Y_{t+1} = \sum_{i=1}^t B_i$, we obtain a familiar form:
+Writing $X_{t+1} = \sum_{i=1}^t C_{i+1}$ and $Y_{t+1} = \sum_{i=1}^t B_i$, we obtain a familiar form:
 \begin{equation}
-Y_{t+1} = \rho X_{t+1} + W_{t+1} - W_1 + \sigma (N_{t+1} - N_1).,
+Y_{t+1} = \frac{1}{\rho} X_{t+1} + W_{t+1} - W_1 + \sigma (N_{t+1} - N_1).,
 \end{equation}
-which appears to suggest that linear regression can be used to estimate the reporting rate and susceptible dynamics \citep{finkenstadt2000time}.
 
-When population size stays constant, 
+When population size stays constant ($N_{t} = N_1$ for all $t \in \mathbb{N}$), the equation simplifies to 
+\begin{equation}
+Y_{t+1} = \frac{1}{\rho} X_{t+1} + W_{t+1} - W_1,
+\end{equation}
+which suggests that linear regression can be used to estimate the reporting rate and susceptible dynamics \citep{finkenstadt2000time}.
+In general, one can write
+$$
+N_{t+1} = N_t + B_t - D_t,
+$$
+where $D_t$ is the number of individuals that died between time $t$ and $t+1$.
+Then, we have
+\begin{equation}
+Y_{t+1} = \frac{1}{\rho} X_{t+1} + W_{t+1} - W_1 + \sigma \left(\sum_{i=1}^t B_i - \sum_{i=1}^t D_i \right).
+\end{equation}
+Writing $M_t =  \sum_{i=1}^t D_i$, we get
+\begin{equation}
+(1 - \sigma) Y_{t+1} = \frac{1}{\rho} X_{t+1} + W_{t+1} - W_1 + \sigma M_t,
+\end{equation}
+which suggests that a linear regression is likely to overestimate susceptible dynamics and underestimate reporting rate.
 
+\subsection*{Non-constant reporting rate}
 
+Consider the following equation:
+\begin{equation}
+\sum_{i=1}^t B_i = \sum_{i=1}^t \frac{C_{i+1}}{\rho_{i+1}} + W_{t+1} - W_1 + \sigma (N_{t+1} - N_1).
+\end{equation}
+Define $\hat{\rho}$ such that $1/\hat{\rho} = E[1/\rho_t]$.
+Then,
+\begin{equation}
+Y_t = \frac{1}{\hat{\rho}} X_t + \sum_{i=1}^t \left(\frac{1}{\rho_{i+1}} - \frac{1}{\hat{\rho}}\right) C_{i+1} + W_{t+1} - W_1 + \sigma (N_{t+1} - N_1).
+\end{equation}
+Let 
+$$
+R_t =  \sum_{i=1}^t \left(\frac{1}{\rho_{i+1}} - \frac{1}{\hat{\rho}}\right) C_{i+1}.
+$$
+Then, we obtain an expression that generalizes the expression derived by \cite{finkenstadt2000time} by accounting for changes in population sizes.
+\begin{equation}
+\begin{aligned}
+Y_t &= \frac{1}{\hat{\rho}} X_t + \left(\frac{1}{\rho_{t+1}} - \frac{1}{\hat{\rho}}\right) C_{t+1} + R_{t-1} + W_{t+1} - W_1 + \sigma (N_{t+1} - N_1)\\
+&= \frac{1}{\rho_t} X_t + \left(\frac{1}{\hat{\rho}}  - \frac{1}{\rho_t} \right) X_{t-1} + R_{t-1} + W_{t+1} - W_1 + \sigma (N_{t+1} - N_1)\\
+\end{aligned}
+\end{equation}
 
 
 
