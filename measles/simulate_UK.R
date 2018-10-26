@@ -20,12 +20,8 @@ measles_UK <- measles_data %>%
 measles_list <- measles_UK %>%
 	split(as.character(.$loc))
 
-nn <- names(tail(sort(sapply(measles_list, function(x) max(x$pop))), 10))
-
-measles_list <- measles_list[nn] ## for teseting purposes
-
 reconstruct_list <- measles_list %>%
-	lapply(function(data) reconstruct_scam(data$cases, data$rec))
+	lapply(function(data) reconstruct_gauss(data$cases, data$rec))
 
 birthmat <- measles_list %>%
 	lapply("[[", "rec") %>%
@@ -43,11 +39,11 @@ ext <- rstan::extract(fit)
 x <- 1:52; k <- seq(0, 52, by=2)
 BX <- cSplineDes(x,k)
 
-psample <- seq(10, 1000, by=10)
+psample <- seq(10, 250, by=10)
 
-sumlist <- vector('list', 100)
+sumlist <- vector('list', length(psample))
 
-for (j in 1:100) {
+for (j in 1:length(psample)) {
 	i <- psample[j]
 	tmat <- exp(ext$amat[i,,] %*% t(BX))
 	

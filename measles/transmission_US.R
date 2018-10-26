@@ -56,17 +56,17 @@ alphadata <- apply(ext$alpha, 2, function(x){
 	mutate(city=factor(city, level=corder))
 
 g1 <- ggplot(tregion) +
-	geom_line(data=tcountry, aes(period, mean), col=1, lwd=1) +
-	geom_line(aes(period, mean), col=2, lty=2, lwd=1) +
+	geom_line(data=tcountry, aes(period, mean), col="grey", lwd=1) +
+	geom_line(aes(period, mean), col=2, lty=1, lwd=1) +
 	geom_ribbon(aes(period, ymin=lwr, ymax=upr), alpha=0.2, fill=2, col=2, lty=2) +
 	geom_text(data=alphadata, x=Inf, y=Inf, aes(label=text), hjust=1.05, vjust=1.25) +
-	facet_wrap(~city, nrow=2) +
+	facet_wrap(~city, nrow=4) +
 	scale_x_continuous(expand=c(0,0)) +
-	scale_y_continuous("transmission rate", limits=c(1, 45)) +
+	scale_y_log10("transmission rate", limits=c(4, 200)) +
 	theme(
 		panel.grid = element_blank(),
 		strip.background = element_blank(),
 		panel.spacing = grid::unit(0, "cm")
 	)
 
-ggsave("transmission_US.pdf", g1, width=8, height=4)
+ggsave("transmission_US.pdf", g1, width=8, height=8)

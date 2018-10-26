@@ -20,7 +20,7 @@ simfun <- function(tmat, ## transmission matrix ncity by nperiod
 	
 	pfun <- switch(method,
 				   function(m,I) {
-				   		rowSums(sapply(1:10, function(x){rmultinom(1, I[x], m[,x])}))
+				   		rowSums(sapply(1:20, function(x){rmultinom(1, I[x], m[,x])}))
 				   },
 				   deterministic=function(m,I) m %*% I)
 	
