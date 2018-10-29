@@ -6,3 +6,8 @@
 
 solve-beta*
 framed.sty
+doc/figure
+*-concordance.tex
+*.gz
+*.log
+*.bbl
