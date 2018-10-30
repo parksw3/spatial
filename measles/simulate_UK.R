@@ -1,4 +1,4 @@
-library(scam)
+library(kernlab)
 library(rstan)
 library(tidyr)
 library(dplyr)
@@ -6,8 +6,7 @@ library(ggplot2); theme_set(theme_bw())
 library(gridExtra)
 source("../R/reconstruct.R")
 source("../R/summary.R")
-source("fitfun.R")
-source("simulate.R")
+source("../R/simulate.R")
 
 load("stan_UK.rda")
 
@@ -15,7 +14,8 @@ measles_data <- read.csv("measlesUKUS.csv")
 
 measles_UK <- measles_data %>% 
 	filter(country=="UK") %>%
-	mutate(cases=ifelse(is.na(cases), 0, cases))
+	mutate(cases=ifelse(is.na(cases), 0, cases)) %>%
+	filter(year < 1965)
 
 measles_list <- measles_UK %>%
 	split(as.character(.$loc))
@@ -34,6 +34,8 @@ rhomat <- reconstruct_list %>%
 	do.call(what="cbind") %>%
 	t
 
+decimalYear <- measles_list[[1]]$decimalYear
+
 ext <- rstan::extract(fit)
 
 x <- 1:52; k <- seq(0, 52, by=2)
@@ -42,10 +44,12 @@ BX <- cSplineDes(x,k)
 psample <- seq(10, 250, by=10)
 
 sumlist <- vector('list', length(psample))
+caselist <- vector('list', length(psample))
 
+set.seed(101)
 for (j in 1:length(psample)) {
 	i <- psample[j]
-	tmat <- exp(ext$amat[i,,] %*% t(BX))
+	betamat <- exp(ext$amat[i,,] %*% t(BX))
 	
 	alpha <- ext$alpha[i,]
 	
@@ -57,23 +61,36 @@ for (j in 1:length(psample)) {
 	S0 <- round(ext$sbar[i,,1] + standata$Zmat[,1])
 	
 	set.seed(101)
-	sim <- simfun(tmat, alpha, mixmat, I0, S0, popmat=popmat, birthmat=birthmat, rhomat=rhomat)
+	sim <- simulate.sir(betamat, alpha, mixmat, I0, S0, popmat=popmat, birthmat=birthmat, rhomat=rhomat)
 	
 	sumlist[[j]] <- lapply(sim, function(x){
 		cc <- x$C
 		
 		data.frame(
-			city=nn,
+			city=1:nrow(cc),
 			max=apply(cc, 1, max),
 			zero=apply(cc, 1, function(y) sum(y==0)/ncol(cc)),
 			period=apply(cc, 1, pfun)
 		)
 	}) %>%
 		bind_rows(.id="sim")
+	
+	caselist[[j]] <- lapply(sim, function(x){
+		cc <- x$C
+		
+		data.frame(
+			city=rep(1:nrow(cc), each=ncol(cc)),
+			tvec=rep(decimalYear, nrow(cc)),
+			cases=c(t(cc))
+		)
+		
+	}) %>%
+		bind_rows(.id="sim")
 }
 
 summdf <- sumlist %>%
 	bind_rows(.id="param") %>%
+	mutate(city=factor(city, levels=1:40, labels=unique(measles_UK$loc))) %>%
 	gather(key, value, -city, -sim, -param) %>%
 	group_by(key, city) %>%
 	summarize(
@@ -124,4 +141,54 @@ g3 <- ggplot(combdf %>% filter(key=="period")) +
 
 gtot <- arrangeGrob(g1, g2, g3, nrow=1)
 
-ggsave("simulate_UK.pdf", gtot, width=12, height=6)
+ggsave("summary_UK.pdf", gtot, width=12, height=6)
+
+casedf <- caselist %>%
+	bind_rows(.id="param") %>%
+	mutate(city=factor(city, levels=1:40, labels=unique(measles_UK$loc))) %>%
+	group_by(city, tvec)
+
+casesumm <- casedf %>%
+	summarize(
+		mean=mean(cases),
+		lwr=quantile(cases, 0.025),
+		upr=quantile(cases, 0.975)
+	)
+
+truecase <- measles_list %>%
+	lapply(function(x){
+		data.frame(
+			city=unique(x$loc),
+			cases=x$cases,
+			tvec=decimalYear
+		)
+	}) %>%
+	bind_rows %>%
+	gather(key, value, -city, -tvec) %>%
+	rename(tvalue=value)
+
+gof <- merge(casesumm, truecase) %>%
+	group_by(city) %>%
+	summarize(
+		gof=cor(mean, tvalue)^2
+	) %>%
+	arrange(-gof) %>%
+	mutate(gof=formatC(gof, 3))
+
+truecase$city <- factor(truecase$city, levels=gof$city)
+casesumm$city <- factor(casesumm$city, levels=gof$city)
+
+gcase <- ggplot(truecase) +
+	geom_line(data=casesumm, aes(tvec, mean), col=2) +
+	geom_ribbon(data=casesumm, aes(tvec, ymin=lwr, ymax=upr), fill=2, alpha=0.5) +
+	geom_text(data=gof, aes(x=Inf, y=Inf, label=gof), hjust=1.05, vjust=1.2) +
+	geom_point(aes(tvec, tvalue), size=0.1) +
+	facet_wrap(~city, scale="free_y", nrow=8) +
+	xlab("time") +
+	ylab("reported cases") +
+	theme(
+		strip.background = element_blank(),
+		panel.spacing = grid::unit(0, "cm")
+	)
+
+ggsave("simulate_UK.pdf", gcase, width=12, height=16)

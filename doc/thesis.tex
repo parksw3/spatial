@@ -9,6 +9,8 @@
 \usepackage{hyperref}
 \bibliographystyle{chicago}
 
+\usepackage{graphicx}
+
 \title{Thesis}
 \date{\today}
 \author{Sang Woo Park}
@@ -18,7 +20,7 @@
 
 \section{Introduction}
 
-Modeling ecological data is challenging.
+Measles is a childhood disease 
 
 TSIR.
 
@@ -92,26 +94,29 @@ Consider the following equation:
 Define $\hat{\rho}$ such that $1/\hat{\rho} = E[1/\rho_t]$.
 Then,
 \begin{equation}
-Y_t = \frac{1}{\hat{\rho}} X_t + \sum_{i=1}^t \left(\frac{1}{\rho_{i+1}} - \frac{1}{\hat{\rho}}\right) C_{i+1} + W_{t+1} - W_1 + \sigma (N_{t+1} - N_1).
+Y_{t+1} = \frac{1}{\hat{\rho}} X_{t+1} + \sum_{i=1}^t \left(\frac{1}{\rho_{i+1}} - \frac{1}{\hat{\rho}}\right) C_{i+1} + W_{t+1} - W_1 + \sigma (N_{t+1} - N_1).
 \end{equation}
 Let 
 $$
-R_t =  \sum_{i=1}^t \left(\frac{1}{\rho_{i+1}} - \frac{1}{\hat{\rho}}\right) C_{i+1}.
+R_{t+1} = \sum_{i=1}^t \left(\frac{1}{\rho_{i+1}} - \frac{1}{\hat{\rho}}\right) C_{i+1}.
 $$
-Then, we obtain an expression that generalizes the expression derived by \cite{finkenstadt2000time} by accounting for changes in population sizes.
+Then, we obtain an expression that generalizes the result derived by \cite{finkenstadt2000time} by accounting for changes in population sizes.
 \begin{equation}
 \begin{aligned}
-Y_t &= \frac{1}{\hat{\rho}} X_t + \left(\frac{1}{\rho_{t+1}} - \frac{1}{\hat{\rho}}\right) C_{t+1} + R_{t-1} + W_{t+1} - W_1 + \sigma (N_{t+1} - N_1)\\
-&= \frac{1}{\rho_t} X_t + \left(\frac{1}{\hat{\rho}}  - \frac{1}{\rho_t} \right) X_{t-1} + R_{t-1} + W_{t+1} - W_1 + \sigma (N_{t+1} - N_1)\\
+Y_{t+1} &= \frac{1}{\hat{\rho}} X_{t+1} + \left(\frac{1}{\rho_{t+1}} - \frac{1}{\hat{\rho}}\right) C_{t+1} + R_{t} + W_{t+1} - W_1 + \sigma (N_{t+1} - N_1)\\
+&= \frac{1}{\rho_{t+1}} X_{t+1} + \left(\frac{1}{\hat{\rho}}  - \frac{1}{\rho_{t+1}} \right) X_{t} + R_{t} + W_{t+1} - W_1 + \sigma (N_{t+1} - N_1)\\
 \end{aligned}
 \end{equation}
 
-
-
-
 \section{Spatial coupling}
 
+\begin{figure}
+\includegraphics[width=\textwidth]{../link/twocity_sim.pdf}
+\caption{\textbf{SIR model} TODO: caption}
+\end{figure}
+
 \section{Case study: measles}
+
 
 
 \bibliography{spatial}
