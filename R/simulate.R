@@ -5,8 +5,9 @@ simulate.sir <- function(betamat, ## transmission matrix ncity by nperiod
 					 nsim=10,
 					 method=c("nbinom", "deterministic", "poisson"),
 					 popmat,
-					 birthmat, ## rhomat needs to be a column longer
-					 rhomat) { 
+					 birthmat, 
+					 rhomat, ## rhomat needs to be a column longer
+					 phi) { 
 	method <- match.arg(method)
 	
 	pp <- ncol(betamat)
@@ -60,6 +61,12 @@ simulate.sir <- function(betamat, ## transmission matrix ncity by nperiod
 			
 			Iprev2[Iprev2==0] <- 1
 			
+			if (missing(phi)) {
+				size <- Iprev2
+			} else {
+				size <- phi
+			}
+			
 			if (all(Iprev==0)) {
 				for (j in t:ncol(simmatI)) {
 					simmatS[,j] <- simmatS[,t-1]
@@ -68,7 +75,7 @@ simulate.sir <- function(betamat, ## transmission matrix ncity by nperiod
 				break
 			}
 			
-			incidence <- mfun(betamat[,period]*simmatS[,t-1]*(Iprev)^alpha/popmat[,t-1], Iprev2)
+			incidence <- mfun(betamat[,period]*simmatS[,t-1]*(Iprev)^alpha/popmat[,t-1], size)
 			
 			ii <- pmin(simmatS[,t-1], incidence)
 			
@@ -85,4 +92,3 @@ simulate.sir <- function(betamat, ## transmission matrix ncity by nperiod
 	}
 	reslist
 }
-

@@ -1,0 +1,172 @@
+---
+title: "Measles in San Francisco"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
+```
+
+Measles in San Francisco is interesting. What's going on?
+
+```{r}
+library(kernlab)
+library(mgcv)
+library(dplyr)
+library(scam)
+library(tsiR)
+library(glmmTMB)
+library(ggplot2); theme_set(theme_bw())
+source("../R/reconstruct.R")
+source("../R/simulate.R")
+```
+
+First, let's look at the data:
+
+```{r}
+measles_data <- read.csv("measlesUKUS.csv")
+
+measles_US <- measles_data %>% 
+	filter(country=="US") %>%
+	mutate(cases=ifelse(is.na(cases), 0, cases))
+
+measles_list <- measles_US %>%
+	split(as.character(.$loc))
+
+sf <- measles_list$`SAN FRANCISCO`
+
+plot(sf$decimalYear, sf$cases, type="l",
+	 ylab="Biweekly cases",
+	 xlab="time (year)")
+```
+
+Periodogram suggests that there are strong three year and one year cycles.
+
+```{r}
+ss <- spectrum(sf$cases, plot=FALSE, log="no")
+
+plot(1/ss$freq/26, ss$spec, type="l", xlim=c(0, 6),
+	 ylab="spectrum",
+	 xlab="period (years)")
+abline(v=3, lty=2)
+```
+
+We want to look at epidemic from 1921 to 1940 (1920 has a weird reporting problem..):
+
+```{r}
+sf2 <- sf %>% 
+	filter(year > 1920, year <= 1940)
+```
+
+Compare susceptible dynamics (quite sensitive to time period):
+
+```{r}
+rr_scam <- reconstruct_scam(sf$cases, sf$rec)
+rr_gauss <- reconstruct_gauss(sf$cases, sf$rec)
+rr_scam2 <- reconstruct_scam(sf2$cases, sf2$rec)
+rr_gauss2 <- reconstruct_gauss(sf2$cases, sf2$rec)
+
+plot(sf$decimalYear, rr_scam$Z, type="l", xlim=c(1920, 1940), lwd=2)
+lines(sf2$decimalYear, rr_scam2$Z, col=1, lty=2, lwd=2)
+lines(sf$decimalYear, rr_gauss$Z, col=2, lwd=2)
+lines(sf2$decimalYear, rr_gauss2$Z, col=2, lty=2, lwd=2)
+```
+
+Estimated reporting rate is also quite variable
+
+```{r}
+plot(sf$decimalYear, 1/rr_scam$rho, type="l", ylim=c(0, 1), lwd=2, xlim=c(1920, 1940))
+lines(sf2$decimalYear, 1/rr_scam2$rho, col=1, lwd=2, lty=2)
+lines(sf$decimalYear, 1/rr_gauss$rho, col=2, lwd=2)
+lines(sf2$decimalYear, 1/rr_gauss2$rho, col=2, lwd=2, lty=2)
+```
+
+For now, we are going to use scam2 results. scam appears to regularize things a little better than gausspr...
+
+```{r}
+Iprev <- head(sf2$cases * rr_scam2$rho, -1)
+Inew <- tail(sf2$cases * rr_scam2$rho, -1)
+
+plot(Iprev, Inew)
+```
+
+Let's try to fit the TSIR model assuming Poisson:
+
+```{r}
+fitdata <- data.frame(
+	time=sf2$decimalYear,
+	cases=sf2$cases,
+	pop=sf2$pop,
+	births=sf2$rec
+)
+
+ff <- runtsir(fitdata,
+			  regtype = "user",
+			  userYhat=unname(c(rr_scam2$Yhat)),
+			  family="poisson",
+			  link="log",
+			  method="negbin")
+```
+
+What happens?
+
+```{r}
+plotres(ff)
+```
+
+The simulation predicts a consist annual cycle.
+What can we do to fix this? First, let's look at the dispersion patterns:
+
+```{r}
+plot(exp(predict(ff$glmfit)), (ff$glmfit$data$Inew-predict(ff$glmfit))^2,
+	 xlab="Mean",
+	 ylab="Variance")
+
+
+```
+
+Surprisingly, there's a strong quadratic mean-variance relationship (often, it's not this clear). So we need to fit negative binomial instead of Poisson. For convenience, we assume that we know proportion of susceptibles
+
+```{r}
+ff2 <- runtsir(fitdata,
+			  regtype = "user",
+			  userYhat=unname(c(rr_scam2$Yhat)),
+			  family="nbinom",
+			  link="log",
+			  method="negbin",
+			  sbar=0.038)
+```
+
+Does this perform any better?
+
+```{r}
+plotres(ff)
+```
+
+Not so much. What can we do to make this fit better? We can try to simulate with extra variability.
+
+```{r}
+set.seed(101)
+sim <- simulate.sir(
+	betamat=matrix(ff2$contact[,2] * mean(ff2$pop), nrow=1),
+	alpha=ff2$alpha,
+	mixmatmatrix(1),
+	I0=ff2$res[1,1],
+	S0=ff2$simS[1,1],
+	nsim=10,
+	method="nbinom",
+	popmat=matrix(head(ff2$pop,-1), nrow=1),
+	birthmat=matrix(head(sf2$rec,-1), nrow=1),
+	rhomat=matrix(rr_scam2$rho, nrow=1),
+	phi=ff2$glmfit$theta
+)
+
+simcases <- sim %>%
+	sapply("[[", "C")
+
+matplot(simcases, type="l")
+```
+
+We get more interesting dynamics, which may resemble the dynamics observed in San Francisco much better.
+
+
