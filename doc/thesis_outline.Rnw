@@ -1,0 +1,102 @@
+\documentclass{article}
+
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+
+\usepackage{natbib}
+\usepackage{hyperref}
+\bibliographystyle{chicago}
+
+\title{Midterm report}
+\date{\today}
+\author{Sang Woo Park}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+
+Measles is one of the most extensively studied systems in theoretical epidemiology.
+Over the last few decades, much of the literature have been devoted to explaining wide range of dynamical behaviours it can exhibit, ranging from simple annual cycles to near-chaotic dynamics \citep{bolker1993chaos}.
+These investigations have provided us with important theoretical foundation in population dynamics and many statistical tools for analyzing epidemic time series.
+
+One of the simplest, yet widely used, model is the Time series Susceptible-Infected-Recovered (TSIR) model \citep{bjornstad2002dynamics}.
+The model describes dynamics of susceptible $S_t$ and infected $I_t$ individuals with the following set of equations:
+\begin{equation}
+\begin{aligned}
+S_{t} &= S_{t-1} + B_{t-1} - I_t\\
+I_{t} &= \beta_{t-1} S_{t-1} \times \frac{I_{t-1}^\alpha}{N_{t-1}}
+\end{aligned}
+\end{equation}
+where $B_t$ represents number of births, $\beta_t$ represents transmission rate, $N_t$ represents total population size, and $\alpha$ represents a heterogeneity parameter.
+The model assumes that ...
+The TSIR model has been proved to be useful for describing the dynamics of various diseases, such as measles [CITE], cholera [CITE], and Hand, foot, and mouth disease [CITE].
+
+
+
+This thesis aims to extend the TSIR framework to estimate temporally and spatially varying transmission rates of measles. 
+First, I review the TSIR framework along with other useful statistical frameworks that provide necessary bases for building the spatial framework.
+Second, I extend the TSIR model by incorporating Bayesian hierarchical structure in epidemiological parameters and spatial mixing among geographically distant regions.
+Finally, I discuss results of my analysis and their implications.
+
+\section{Review - TSIR model}
+
+The basic TSIR model describes dynamics of susceptible $S_t$ and infected $I_t$ individuals with the following set of equations:
+\begin{equation}
+\begin{aligned}
+S_{t} &= S_{t-1} + B_{t-1} - I_t\\
+I_{t} &= \beta_w S_{t-1} \times \frac{I_{t-1}^\alpha}{N_{t-1}}
+\end{aligned}
+\end{equation}
+where $B_t$ represents number of births, $\beta_w$ represents transmission rate for biweek $w$, $N$ represents total population size, and $\alpha$ represents a heterogeneity parameter.
+The main idea behind the TSIR model is that the dynamical system can be linearized by taking a log transformation:
+\begin{equation}
+\log I_t = \log \beta_w + \log S_{t-1} + \alpha \log I_{t-1} - \log N_{t-1}.
+\end{equation}
+
+After linearization, inference becomes a two-step process.
+First, \emph{relative} susceptible dynamics $Z_t = S_t - \bar{S}$ is reconstructed from incidence and birth time series.
+Second, given the \emph{true} susceptible dynamics $S_t$, time varying transmission rates $\beta_w$ and heterogeneity parameter $\alpha$ is estimated using a generalized linear model \citep{bjornstad2002dynamics}.
+Inferred parameters can be used to simulate epidemics and make predictions about future epidemics.
+
+It extends on the chain-binomial model \citep{fine1982measles}
+
+
+\subsection{Susceptible reconstruction}
+
+In this section, we describe the susceptible reconstruction method introduced by 
+
+Figure ??? provides an analysis of measles time series from London 
+
+
+<<>>==
+library(tsiR)
+library(ggplot2); theme_set(theme_bw())
+london <- twentymeas$London
+rr <- runtsir(london, nsim=1)
+
+tmpdf <- data.frame(
+	prev=head(london$cases*rr$rho/london$pop, -1), ## I/N
+	after=tail(london$cases*rr$rho/rr$simS[,1], -1), ## I/S
+	period=rep(1:26, 100)[1:(nrow(london)-1)]
+)
+
+ggplot(tmpdf) +
+	geom_point(aes(prev, after)) +
+	facet_wrap(~period)
+@
+
+
+\subsection{Splines}
+
+\subsection{Hierarchical structure}
+
+\section{Methods}
+
+
+
+
+\bibliography{spatial}
+\end{document}
