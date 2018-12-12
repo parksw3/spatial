@@ -1,4 +1,5 @@
 library(kernlab)
+library(mgcv)
 library(rstan)
 library(tidyr)
 library(dplyr)
@@ -60,7 +61,6 @@ for (j in 1:length(psample)) {
 	I0 <- standata$Iprev[,1]
 	S0 <- round(ext$sbar[i,,1] + standata$Zmat[,1])
 	
-	set.seed(101)
 	sim <- simulate.sir(betamat, alpha, mixmat, I0, S0, popmat=popmat, birthmat=birthmat, rhomat=rhomat)
 	
 	sumlist[[j]] <- lapply(sim, function(x){
@@ -192,3 +192,4 @@ gcase <- ggplot(truecase) +
 	)
 
 ggsave("simulate_UK.pdf", gcase, width=12, height=16)
+save("caselist", "sumlist", file="simulate_UK.rda")

@@ -16,10 +16,6 @@ measles_US <- measles_data %>%
 measles_list <- measles_US %>%
 	split(as.character(.$loc))
 
-nn <- names(tail(sort(sapply(measles_list, function(x) max(x$pop))), 20))
-
-measles_list <- measles_list[nn] ## for teseting purposes
-
 reconstruct_list <- measles_list %>%
 	lapply(function(data) reconstruct_gauss(data$cases, data$rec))
 
@@ -30,6 +26,8 @@ Zmat <- reconstruct_list %>%
 rhomat <- reconstruct_list %>%
 	lapply("[[", "rho") %>%
 	do.call(what="cbind")
+
+rhomat[rhomat<1] <- 1
 
 popmat <- measles_list %>%
 	lapply("[[", "pop") %>%
@@ -74,8 +72,7 @@ standata <- list(
 rt <- stanc(file="model.stan")
 sm <- stan_model(stanc_ret = rt, verbose=FALSE)
 
-set.seed(101) 
+set.seed(101)
 system.time(fit <- sampling(sm, data=standata, chains=1, iter=5000, thin=10))
 
-save("nn", "fit", "standata", file="stan_US.rda")
- 
+save("fit", "standata", file="stan_US.rda")

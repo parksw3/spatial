@@ -1,4 +1,5 @@
 library(rstan)
+library(tidyr)
 library(dplyr)
 library(ggplot2); theme_set(theme_bw())
 
@@ -24,7 +25,7 @@ tcountry <- tfun(ext$mu_a)
 
 tlist <- apply(ext$amat, 2, tfun)
 
-names(tlist) <- nn
+names(tlist) <- rownames(standata$Inew)
 
 tregion <- tlist %>%
 	bind_rows(.id="city")
@@ -48,7 +49,7 @@ alphadata <- apply(ext$alpha, 2, function(x){
 	))))
 }) %>%
 	lapply(setNames, c("mean", "lwr", "upr")) %>%
-	setNames(nn) %>%
+	setNames(rownames(standata$Inew)) %>%
 	bind_rows(.id="city") %>%
 	mutate(
 		text=paste0(mean, " (", lwr, ", ", upr, ")")
@@ -60,8 +61,8 @@ g1 <- ggplot(tregion) +
 	geom_line(aes(period, mean), col=2, lty=1, lwd=1) +
 	geom_ribbon(aes(period, ymin=lwr, ymax=upr), alpha=0.2, fill=2, col=2, lty=2) +
 	geom_text(data=alphadata, x=Inf, y=Inf, aes(label=text), hjust=1.05, vjust=1.25) +
-	facet_wrap(~city, nrow=4) +
-	scale_x_continuous(expand=c(0,0)) +
+	facet_wrap(~city, nrow=5) +
+	scale_x_continuous("biweek", expand=c(0,0)) +
 	scale_y_log10("transmission rate", limits=c(4, 200)) +
 	theme(
 		panel.grid = element_blank(),
@@ -69,4 +70,28 @@ g1 <- ggplot(tregion) +
 		panel.spacing = grid::unit(0, "cm")
 	)
 
-ggsave("transmission_US.pdf", g1, width=8, height=8)
+ggsave("transmission_US.pdf", g1, width=16, height=16)
+
+x2 <- c(seq(0, 26, by=0.1), seq(26, 52, by=0.1))
+BX2 <- cSplineDes(x2,k)
+
+tdf <- ext$mu_a %>%
+	apply(1, function(y) y %*% t(BX2)) %>%
+	exp %>%
+	as.data.frame %>%
+	mutate(period=rep(seq(0, 26, 0.1), 2),
+		   year=rep(c(1, 2), each=length(x2)/2)) %>%
+	gather(key, value, -period, -year) %>%
+	group_by(period, year) %>%
+	summarize(
+		mean=mean(value),
+		lwr=quantile(value, 0.025),
+		upr=quantile(value, 0.975)
+	) %>%
+	mutate(year=factor(year, labels=c("even", "odd")))
+
+gcomp <- ggplot(tdf) +
+	geom_line(aes(period, mean, col=year), lwd=1.1) +
+	geom_ribbon(aes(period, ymin=lwr, ymax=upr, fill=year, col=year), alpha=0.3) +
+	scale_x_continuous("biweek", expand=c(0, 0)) +
+	scale_y_continuous("transmission rate")
