@@ -121,11 +121,9 @@ What can we do to fix this? First, let's look at the dispersion patterns:
 plot(exp(predict(ff$glmfit)), (ff$glmfit$data$Inew-predict(ff$glmfit))^2,
 	 xlab="Mean",
 	 ylab="Variance")
-
-
 ```
 
-Surprisingly, there's a strong quadratic mean-variance relationship (often, it's not this clear). So we need to fit negative binomial instead of Poisson. For convenience, we assume that we know proportion of susceptibles
+Surprisingly, there's a strong quadratic mean-variance relationship (often, it's not this clear). So we need to fit negative binomial instead of Poisson. 
 
 ```{r}
 ff2 <- runtsir(fitdata,
@@ -134,16 +132,25 @@ ff2 <- runtsir(fitdata,
 			  family="nbinom",
 			  link="log",
 			  method="negbin",
-			  sbar=0.038)
+			  Smean=seq(0.03 * min(sf$pop), 0.2 * min(sf$pop), length.out=50))
 ```
 
 Does this perform any better?
 
 ```{r}
-plotres(ff)
+plotres(ff2)
 ```
 
-Not so much. What can we do to make this fit better? We can try to simulate with extra variability.
+Not so much. What about dispersion?
+
+```{r}
+plot(exp(predict(ff2$glmfit)), (ff$glmfit$data$Inew-predict(ff2$glmfit))^2,
+	 xlab="Mean",
+	 ylab="Variance")
+curve(x * (1 + x/ff2$glmfit$theta), add=TRUE, col=2)
+```
+
+What can we do to make this fit better? We can try to simulate with extra variability.
 
 ```{r}
 set.seed(101)
@@ -153,7 +160,7 @@ sim <- simulate.sir(
 	mixmatmatrix(1),
 	I0=ff2$res[1,1],
 	S0=ff2$simS[1,1],
-	nsim=10,
+	nsim=50,
 	method="nbinom",
 	popmat=matrix(head(ff2$pop,-1), nrow=1),
 	birthmat=matrix(head(sf2$rec,-1), nrow=1),
@@ -164,9 +171,10 @@ sim <- simulate.sir(
 simcases <- sim %>%
 	sapply("[[", "C")
 
-matplot(simcases, type="l")
+matplot(simcases, type="l", col=1)
+lines(sf2$cases, col=2, lwd=2)
 ```
 
-We get more interesting dynamics, which may resemble the dynamics observed in San Francisco much better.
+We get a lot more interesting dynamics, which may better resemble the dynamics observed in San Francisco.
 
 
